@@ -1,0 +1,613 @@
+:root {
+  /* Base palette -- minimal, professional govt-portal look: white/grey
+     neutrals, navy blue as the primary brand color, light brown used
+     only as a sparing secondary accent. All colors live here so every
+     view/dashboard stays in sync -- change a value once, it updates
+     everywhere. */
+  --color-bg: #f6f6f4;
+  --color-surface: #ffffff;
+  --color-surface-alt: #eeece7;
+  --color-border: #dedad2;
+  --color-border-soft: #e8e5de;
+
+  --color-primary: #1e3a5f;
+  --color-primary-dark: #14283f;
+  --color-primary-light: #e7edf3;
+
+  --color-accent: #8a7053;
+  --color-accent-light: #f1ece2;
+  --color-yellow: #c9971f;
+
+  --color-text: #2b2b28;
+  --color-text-muted: #6b6b64;
+  --color-text-faint: #9a958a;
+
+  --color-link: #1e3a5f;
+
+  /* Tier / status colors -- each must stay visually distinct from the
+     others and from --color-primary. */
+  --tier-critical: #b3261e;
+  --tier-high: #b3540e;
+  --tier-medium: #a3821a;
+  --tier-low: #4a7c3f;
+  --tier-clear: #2c6b3f;
+  --tier-normal: #8a8a8a;
+  --tier-pending-border: #c7c2b6;
+
+  --radius-sm: 4px;
+  --radius-md: 5px;
+  --radius-lg: 6px;
+
+  --shadow-card: none;
+  --shadow-panel: 0 2px 10px rgba(30, 28, 24, 0.12);
+}
+
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  margin: 0;
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+/* Flat white masthead with a thin navy rule underneath, instead of a
+   solid color banner -- closer to how official govt portals present a
+   header (ministry name + scheme name in plain text, not a colored
+   block), per the MPLADS reference site. A slim top accent bar carries
+   the brand color instead. */
+header {
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 1.1rem 2rem;
+  border-bottom: 3px solid var(--color-primary);
+  border-top: 6px solid var(--color-accent);
+}
+
+header h1 { margin: 0; font-size: 1.4rem; letter-spacing: 0.01em; color: var(--color-primary); font-weight: 700; }
+header p { margin: 0.2rem 0 0; color: var(--color-text-muted); font-size: 0.85rem; }
+
+/* Stage 2 -- homepage masthead branding: small "MPLADS" line on top,
+   full scheme name underneath, both plain/base size (not the old
+   uppercase-accent "SAKSHA" small-caps treatment, and not the old
+   all-caps "SAKSHA•AI" + AI tagline). */
+.brand-name {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.brand-fullform {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+/* Masthead title -- "MPLADS" now takes this large/bold/blue treatment
+   (previously used for "NIGRANAM-AI"). */
+.brand-product-name {
+  margin-top: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--color-primary);
+}
+/* NIGRANAM-AI product name -- yellow, and a bit bigger than the plain
+   .brand-name subtitle line below it. */
+.brand-nigranam {
+  color: var(--color-yellow);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+main { padding: 2rem; }
+
+#status {
+  font-size: 1.1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  display: inline-block;
+}
+
+/* Stage 2b -- #status now shows the product mark ("Saksha.AI") once the
+   backend is reachable, instead of a raw "Backend connected" string. */
+#status.product-mark {
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--color-accent);
+  font-size: 1rem;
+}
+
+/* Stage 2b -- corner "menu bar": a single collapsed trigger that opens a
+   dropdown of the 3 entry points (Login as Authority / Login as
+   Implementing Agency / Check Your Area Projects). Replaces the old
+   always-expanded two-button box. */
+.menu-trigger {
+  width: 100%;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.hamburger-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+.menu-dropdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.menu-dropdown button {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.menu-dropdown button:hover { background: var(--color-primary-light); border-color: var(--color-primary); }
+
+/* Stage 2b -- centered overlay for whichever menu option was chosen.
+   Background dashboard stays visible, dimmed, behind it. */
+/* Project-details page -- opened over the current dashboard whenever a
+   project row is clicked anywhere (see openWorkDetail() in
+   views/shared/dashboard_kit.js). A separate full page, not an inline
+   panel appended below the project list. */
+#project-page-root:empty { display: none; }
+.project-page-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: var(--color-bg);
+  overflow-y: auto;
+  padding: 2rem 1.5rem 3rem;
+}
+.project-page-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+  padding: 1.75rem 2rem;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(20, 18, 14, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.modal-box {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+  padding: 1.75rem 2rem;
+  width: 100%;
+  max-width: 440px;
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+}
+.modal-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.9rem;
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+}
+.modal-close:hover { color: var(--color-text); }
+.modal-box h3 { margin-top: 0; color: var(--color-primary); }
+
+#view-nav { margin: 1.5rem 0; display: flex; gap: 0.5rem; }
+
+#view-nav button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+#view-nav button:hover { background: var(--color-primary-light); }
+
+#view-root { margin-top: 1rem; }
+
+/* Stage 2 -- big "About the Scheme" section on the public homepage. */
+.about-scheme {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: 4px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  padding: 1.75rem 2rem;
+  margin: 0 0 1.75rem;
+  box-shadow: var(--shadow-card);
+}
+.about-scheme h2 {
+  margin: 0 0 1rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+.about-scheme p {
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--color-text);
+  margin: 0 0 1rem;
+}
+.about-scheme p:last-child { margin-bottom: 0; }
+
+/* Phase 8 bug fix (PRD.md S4.11/S7 item 4) -- persistent, corner dashboard
+   switcher. Replaces the old #role-switcher <select> + always-visible
+   nav; #view-nav above is now populated dynamically by main.js, scoped to
+   the current role, instead of hardcoding all 4 views in index.html. */
+.dashboard-switcher {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 100;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 0.9rem 1rem;
+  box-shadow: var(--shadow-panel);
+  min-width: 200px;
+  max-width: 260px;
+}
+.switcher-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+.switcher-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--color-text);
+  margin: 0.6rem 0 0.25rem;
+}
+.dashboard-switcher select,
+.dashboard-switcher input {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  box-sizing: border-box;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.dashboard-switcher .primary-button {
+  width: 100%;
+  margin-top: 0.7rem;
+}
+.dashboard-switcher .error { font-size: 0.8rem; margin-top: 0.5rem; }
+.switcher-account { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.6rem; }
+.switcher-note { font-size: 0.72rem; color: var(--color-text-faint); margin: 0.6rem 0 0; }
+
+#view-nav button.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.subtle { color: var(--color-text-muted); font-size: 0.9rem; }
+.error { color: var(--tier-critical); font-weight: 500; }
+
+.stat-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+.stat-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  min-width: 140px;
+  box-shadow: var(--shadow-card);
+}
+.stat-value { font-size: 1.6rem; font-weight: 700; color: var(--color-primary); }
+.stat-value-sub { font-size: 1.05rem; font-weight: 600; color: var(--color-text); margin-top: 0.1rem; }
+.stat-label { font-size: 0.85rem; color: var(--color-text-muted); }
+
+.tier-pill {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: white;
+  background: var(--tier-normal);
+}
+.tier-critical { background: var(--tier-critical); }
+.tier-high { background: var(--tier-high); }
+.tier-medium { background: var(--tier-medium); color: #2e2400; }
+.tier-low { background: var(--tier-low); }
+.tier-normal, .tier-none { background: var(--tier-normal); }
+
+/* Phase 8 bug fix (PRD.md S7 item 2) -- "Clear" (genuinely scored, below
+   the flagging bar) is now visually DISTINCT from "Pending analysis"
+   (never scored yet) -- these must never look the same, or look like the
+   old blanket "not flagged" default (Architecture.md S4). */
+.tier-clear { background: var(--tier-clear); }
+.tier-pending {
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--tier-pending-border);
+}
+
+.bar-chart { display: flex; flex-direction: column; gap: 0.4rem; }
+.bar-row { display: flex; align-items: center; gap: 0.5rem; }
+.bar-label { width: 140px; font-size: 0.85rem; }
+.bar-track {
+  flex: 1;
+  background: var(--color-surface-alt);
+  border-radius: 4px;
+  height: 10px;
+  overflow: hidden;
+}
+.bar-fill { background: var(--color-primary); height: 100%; }
+.bar-value { width: 2.5rem; text-align: right; font-size: 0.85rem; }
+
+/* Phase 12 -- graphical analysis (pie chart + its legend). */
+.chart-row { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin: 0.5rem 0 1.5rem; }
+.chart-legend { display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.85rem; }
+.chart-legend-item { display: flex; align-items: center; gap: 0.5rem; }
+.chart-legend-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex-shrink: 0; }
+
+.filter-bar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 1rem 0;
+  flex-wrap: wrap;
+}
+.filter-bar input[type="text"], .filter-bar select {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-surface);
+  font-size: 0.85rem;
+  box-shadow: var(--shadow-card);
+}
+.data-table th, .data-table td {
+  border: 1px solid var(--color-border);
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+}
+.data-table th { background: var(--color-surface-alt); color: var(--color-text); }
+
+.network-nodes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.network-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  box-shadow: var(--shadow-card);
+}
+.network-card-title { font-weight: 600; }
+.network-reason { font-size: 0.85rem; font-weight: 600; color: var(--color-accent); margin: 0.5rem 0; }
+
+/* Public verify-box (PRD.md S4.10) -- the phone/ID -> OTP -> area-lookup
+   flow (routers/public.py, Phase 11), and reused for the District
+   Authority's "issue agency credentials" form (Phase 11 item 3). */
+.verify-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin: 1rem 0 1.5rem;
+}
+.verify-box input,
+.verify-box select {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.work-list { list-style: none; padding: 0; margin: 0.5rem 0 1.5rem; }
+.work-item {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.4rem;
+  background: var(--color-surface);
+}
+.work-item.clickable { cursor: pointer; }
+.work-item.clickable:hover { background: var(--color-primary-light); }
+
+.link-button {
+  background: none;
+  border: none;
+  color: var(--color-link);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.escalation-track { display: flex; align-items: center; flex-wrap: wrap; margin: 0.75rem 0; }
+.escalation-step {
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+}
+.escalation-step.past { background: #e2ece1; color: var(--tier-clear); }
+.escalation-step.current { background: var(--color-primary); color: white; font-weight: 600; }
+.escalation-step.resolved { background: var(--tier-clear); color: white; font-weight: 600; }
+.escalation-arrow { margin: 0 0.3rem; color: var(--color-text-faint); }
+
+/* Phase 14 (Evidence Layer) -- money/delay/duplicate/photo-forensics cards
+   on the work-detail view (review.js's _renderEvidence()). */
+.evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+  margin: 0.5rem 0 1rem;
+}
+.evidence-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.9rem;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+.evidence-card h5 { margin: 0 0 0.35rem; color: var(--color-primary); }
+.evidence-card p { margin: 0.25rem 0; font-size: 0.9rem; }
+.evidence-card a { color: var(--color-primary); font-weight: 600; }
+
+.stage-list { margin: 0.5rem 0 1rem; }
+.stage-entry {
+  border-left: 3px solid var(--tier-low);
+  padding: 0.5rem 0.8rem;
+  margin-bottom: 0.5rem;
+  background: var(--color-surface);
+}
+
+.review-thread { margin: 0.75rem 0; }
+.review-entry {
+  border-left: 3px solid var(--color-border);
+  padding: 0.5rem 0.8rem;
+  margin-bottom: 0.5rem;
+  background: var(--color-surface);
+}
+.review-reason { font-style: italic; color: var(--color-text-muted); margin-top: 0.25rem; }
+
+textarea#action-reason {
+  width: 100%;
+  min-height: 70px;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.action-buttons { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+.action-btn, .primary-button {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  color: var(--color-text);
+}
+.action-btn.clear { border-color: var(--tier-low); color: var(--tier-clear); }
+.action-btn.escalate { border-color: var(--tier-high); color: var(--color-accent); }
+.primary-button { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+.primary-button:hover { background: var(--color-primary-dark); border-color: var(--color-primary-dark); }
+
+/* Phase 10 -- per-role dashboard shell (tabs) + a few new section types
+   shared across the six role dashboards (views/shared/dashboard_kit.js). */
+.dashboard-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 1rem 0 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.6rem;
+}
+.dashboard-tab {
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+.dashboard-tab.active { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+.tab-panel { min-height: 120px; }
+
+.clickable-row { cursor: pointer; }
+.clickable-row:hover { background: var(--color-primary-light); }
+
+.drilldown-list { list-style: none; padding: 0; margin: 0.5rem 0 1.5rem; }
+.drilldown-item {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.4rem;
+  background: var(--color-surface);
+  cursor: pointer;
+}
+.drilldown-item:hover { background: var(--color-primary-light); }
+.drilldown-item .drilldown-title { font-weight: 600; }
+
+.category-cards { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.75rem 0; }
+.category-card {
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  min-width: 130px;
+}
+.category-card:hover, .category-card.active { border-color: var(--color-primary); background: var(--color-primary-light); }
+.category-card .stat-value { font-size: 1.2rem; }
+
+.upload-box {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin: 0.75rem 0;
+  background: var(--color-surface-alt);
+}
+.upload-box input[type="file"] { display: block; margin-bottom: 0.5rem; }
+
+.sub-tabs { display: flex; gap: 0.4rem; margin-bottom: 0.75rem; }
+.sub-tab {
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.sub-tab.active { background: var(--color-primary); color: white; border-color: var(--color-primary); }

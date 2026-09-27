@@ -1,0 +1,32 @@
+# --- Python (backend) ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# --- Node / Vite (frontend) ---
+node_modules/
+dist/
+.vite/
+*.local
+
+# --- OS / editor junk ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Logs ---
+*.log
+npm-debug.log*
+
+# --- Large/generated data (optional, uncomment if you don't want these tracked) ---
+# backend/data/*.joblib
+# backend/data/duplicate_index/

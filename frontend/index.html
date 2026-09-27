@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title> NIGRANAM-AI | MPLADS</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <header>
+    <span class="brand-fullform brand-product-name">MPLADS</span>
+    <span class="brand-name">Members of Parliament Local Area Development Scheme</span>
+  </header>
+
+  <!-- Stage-2b -- centered overlay mount point for the corner menu's 3
+       options (Login as Authority / Login as Implementing Agency / Check
+       Your Area Projects). The home dashboard stays visible, dimmed,
+       behind it -- see main.js's renderModal() + style.css .modal-*. -->
+  <div id="modal-root"></div>
+
+  <!-- Full-page mount point for a single project's details, opened by
+       clicking any project row on any dashboard (see
+       views/shared/dashboard_kit.js's openWorkDetail()). Sits above the
+       dashboard/tabs underneath, which stays exactly as it was so "Back"
+       can simply close this and return to it. -->
+  <div id="project-page-root"></div>
+
+  <!--
+    Phase 8 bug fix (PRD.md S4.11/S7 item 4) -- persistent dashboard
+    switcher, a fixed corner control (see style.css #dashboard-switcher),
+    filled in by main.js from the roles the current visitor actually has
+    access to. Replaces the old flat role-<select> + always-all-4-buttons
+    nav, which is exactly how Registry/Network/Review used to leak into
+    the no-login public view (S7 item 1).
+  -->
+  <div id="dashboard-switcher" class="dashboard-switcher"></div>
+
+  <main>
+    <div id="status">Checking backend...</div>
+
+    <!-- Phase 5 view mount points -- each view script fills its own <section>.
+         Buttons here are rendered dynamically by main.js, scoped to the
+         current role -- never hardcoded to all 4 views (S7 item 1/4). -->
+    <nav id="view-nav" style="display:none;"></nav>
+
+    <section id="view-root"></section>
+  </main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
