@@ -55,7 +55,7 @@ the `users` table (or just the six old rows) before re-running this.
 """
 from app.database import SessionLocal, engine, Base
 from app.models import User
-from app.auth.security import hash_password
+from app.auth.security import hash_password, verify_password
 from app.auth.permissions import (
     ROLE_IMPLEMENTING_AGENCY,
     ROLE_LOCAL_AUTHORITY,
@@ -232,17 +232,35 @@ def seed_users():
     Base.metadata.create_all(bind=engine)  # safe no-op if tables already exist
     db = SessionLocal()
     try:
-        existing = {u.x_user_id for u in db.query(User.x_user_id).all()}
+        existing = {u.x_user_id: u for u in db.query(User).all()}
         added = 0
+        repaired = 0
         for entry in DEMO_USERS:
-            if entry["x_user_id"] in existing:
+            plain_password = entry["password"]
+            current = existing.get(entry["x_user_id"])
+            if current is not None:
+                # Self-heal: seeded hashes depend on SENTINEL_PASSWORD_PEPPER.
+                # If the pepper was added/changed after the first boot, every
+                # stored hash silently stops matching and ALL logins fail with
+                # "Incorrect account or password" even though the credentials
+                # are right. The demo passwords are published in
+                # Demo-Credentials.md (source of truth), so re-hash any demo
+                # account whose stored hash no longer verifies.
+                if not verify_password(plain_password, current.password_hash):
+                    current.password_hash = hash_password(plain_password)
+                    repaired += 1
                 continue
-            row = dict(entry)
-            plain_password = row.pop("password")
+            row = {k: v for k, v in entry.items() if k != "password"}
             row["password_hash"] = hash_password(plain_password)
             db.add(User(**row))
             added += 1
         db.commit()
+        if repaired:
+            import logging
+            logging.getLogger("sentinel.startup").warning(
+                "seed_users: re-hashed %d demo account(s) whose stored hash did not "
+                "match the current SENTINEL_PASSWORD_PEPPER", repaired
+            )
         return added
     finally:
         db.close()
