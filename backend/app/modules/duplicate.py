@@ -142,18 +142,32 @@ def _build_faiss_index(matrix: np.ndarray):
     return index
 
 
+_index_singleton = None
+
+
 def _get_index(all_works: pd.DataFrame):
-    """Returns (faiss_index, matrix, method, work_ids), cached in-process
-    per DataFrame instance, and persisted to disk (backend/data/
-    duplicate_index/) so it survives process restarts -- built once, not
-    on every boot, same reasoning as isolation_forest.py's MODEL_PATH."""
-    key = id(all_works)
-    if key in _index_cache:
-        return _index_cache[key]
+    """Returns (faiss_index, matrix, method, work_ids), built/loaded ONCE per
+    process and persisted to disk (backend/data/duplicate_index/).
+
+    Bug fix: this used to be keyed on id(all_works) and required the on-disk
+    work_ids to equal ALL of all_works. Once any DB-backed Project existed,
+    get_all_works() returned a longer, freshly-built DataFrame each call, so
+    the on-disk index never matched and the whole embedding index was
+    rebuilt (and rewritten to disk) per scored work. The index is now built
+    over the read-only CSV rows only (they are always the first rows of
+    all_works, so positions returned by the index remain valid iloc
+    positions into all_works). DB-backed projects are simply not in the
+    index -> _search_candidates returns [] for them (duplicate score 0.0)
+    instead of hanging the API."""
+    global _index_singleton
+    if _index_singleton is not None:
+        return _index_singleton
 
     import faiss
+    from app.data_loader import load_works
 
-    work_ids = all_works["work_id"].to_numpy()
+    csv_works = load_works()
+    work_ids = csv_works["work_id"].to_numpy()
 
     if (os.path.exists(_FAISS_INDEX_PATH) and os.path.exists(_EMBEDDINGS_PATH)
             and os.path.exists(_METHOD_PATH) and os.path.exists(_WORK_IDS_PATH)):
@@ -162,11 +176,11 @@ def _get_index(all_works: pd.DataFrame):
             index = faiss.read_index(_FAISS_INDEX_PATH)
             matrix = np.load(_EMBEDDINGS_PATH)
             method = open(_METHOD_PATH).read().strip()
-            _index_cache[key] = (index, matrix, method, work_ids)
-            return _index_cache[key]
-        # else: dataset changed since the cached index was built -- rebuild below.
+            _index_singleton = (index, matrix, method, work_ids)
+            return _index_singleton
+        # else: the CSV changed since the cached index was built -- rebuild below.
 
-    matrix, method = _build_embeddings(all_works)
+    matrix, method = _build_embeddings(csv_works)
     index = _build_faiss_index(matrix)
 
     os.makedirs(_INDEX_DIR, exist_ok=True)
@@ -176,8 +190,8 @@ def _get_index(all_works: pd.DataFrame):
     with open(_METHOD_PATH, "w") as f:
         f.write(method)
 
-    _index_cache[key] = (index, matrix, method, work_ids)
-    return _index_cache[key]
+    _index_singleton = (index, matrix, method, work_ids)
+    return _index_singleton
 
 
 def _search_candidates(work: dict, all_works: pd.DataFrame):

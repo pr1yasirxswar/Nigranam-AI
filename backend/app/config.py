@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     # service (Rules.md) -- plain local disk, same "hackathon-simple,
     # documented placeholder" pattern already used for auth (Rules.md,
     # models.py's User docstring).
+    # DEPLOYMENT NOTE: on Render, local disk is wiped on every redeploy and
+    # every restart unless you attach a paid persistent disk mounted at this
+    # path. Fine for a demo; for real durability, either add a Render disk
+    # (set UPLOAD_DIR to its mount path) or swap this for S3/GCS later.
     upload_dir: str = "./data/uploads"
 
     class Config:

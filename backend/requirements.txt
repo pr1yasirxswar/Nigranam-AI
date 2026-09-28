@@ -7,10 +7,20 @@ pydantic-settings
 pandas
 python-dotenv
 scikit-learn
-sentence-transformers
+# sentence-transformers intentionally NOT installed in production: it pulls in
+# PyTorch (~2 GB, and 500+ MB RAM at import) which does not fit Render's free
+# 512 MB instance. It is only used to REBUILD the duplicate index when the CSV
+# changes; the prebuilt index in data/duplicate_index/ is loaded from disk, and
+# duplicate.py already falls back to TF-IDF if it is missing. Re-add it locally
+# only if you regenerate the CSV.
 networkx
 joblib
 requests
+# Required by app/modules/duplicate.py (faiss.IndexFlatIP / IndexIVFFlat) --
+# was missing entirely, which crashed the startup scoring pass with
+# ModuleNotFoundError on any environment that didn't already have it
+# installed globally (e.g. a fresh Render build).
+faiss-cpu
 # Required by FastAPI to parse multipart/form-data (Form()/UploadFile) --
 # needed by the new POST /projects/{id}/stages endpoint (Phase 12 item 3).
 # Not a "new dependency" in the Rules.md sense (no new service/capability

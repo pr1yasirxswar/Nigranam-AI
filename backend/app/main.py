@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import asyncio
 import logging
-from app.data_loader import get_all_works, get_work_by_id
+import os
+from app.data_loader import get_all_works, get_work_by_id, load_works
 from app.modules.duplicate import score_duplicate
 from app.modules.money import score_money
 from app.modules.progress import score_progress
@@ -19,14 +20,30 @@ from app.routers import projects, auth, flags, reviews, agencies, stats, collusi
 from app.escalation.scheduler import escalation_background_loop, run_escalation_tick
 from app.escalation.deadline_scheduler import deadline_background_loop, run_deadline_check_tick
 from app.scoring.pipeline import run_full_scoring
+from app.guards import require_debug_access
+from sqlalchemy import text
 
 app = FastAPI(title="NIGRANAM-AI API")
+
+# Bug fix: CORSMiddleware used to be added TWICE, both hardcoded to
+# localhost:5173, which blocks a deployed frontend entirely. One middleware
+# now; origins come from CORS_ORIGINS (comma-separated, e.g. your Vercel
+# production URL). Trailing slashes are stripped because browsers send the
+# Origin header without one and an exact-match list would otherwise never
+# match. CORS_ORIGIN_REGEX optionally allows Vercel preview deployments,
+# e.g. https://d-mplads-.*\\.vercel\\.app
+_default_origins = "http://localhost:5173,https://localhost:5173"
+allowed_origins = [
+    o.strip().rstrip("/") for o in os.environ.get("CORS_ORIGINS", _default_origins).split(",") if o.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://localhost:5173"],  # Vite dev server default
+    allow_origins=allowed_origins,
+    allow_origin_regex=os.environ.get("CORS_ORIGIN_REGEX") or None,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],)
+    allow_headers=["*"],
+)
 
 def _run_full_scoring_sync():
     """Blocking work (pandas + sklearn + Postgres writes over ~5,940 rows)
@@ -35,7 +52,7 @@ def _run_full_scoring_sync():
     df = get_all_works()
     db = SessionLocal()
     try:
-        summary = run_full_scoring(db, df)
+        summary = run_full_scoring(db, df, skip_analyzed=True)
         logging.getLogger("sentinel.startup").info(
             "startup full-scoring pass: %s", summary
         )
@@ -72,23 +89,24 @@ async def on_startup():
     loop = asyncio.get_event_loop()
     loop.run_in_executor(None, _run_full_scoring_sync)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173","https://localhost:5173"],  # Vite dev server default
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 @app.get("/health")
-def health():
-    df = get_all_works()
-    return {"status": "ok", "rows_loaded": len(df)}
+def health(db: Session = Depends(get_db)):
+    """Bug fix: this used to call get_all_works(), which queries Postgres and
+    concatenates ~19.5k rows on EVERY hit -- and Render's health check plus
+    the frontend's startup ping both call it. Now: one cheap `SELECT 1` (also
+    keeps a Supabase project from idling) + the cached CSV row count.
+    Returns 503 if the database is unreachable so Render can restart."""
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception:
+        raise HTTPException(status_code=503, detail="database unreachable")
+    return {"status": "ok", "rows_loaded": len(load_works())}
 
 # Phase 1 exit check (Implementation-Guide.md): temporary endpoint that runs
 # all four independent scoring modules on one work and returns their raw,
 # un-aggregated scores. Aggregation into a single severity tier is Phase 2 --
 # do not add aggregation logic here.
-@app.get("/debug/score/{work_id}")
+@app.get("/debug/score/{work_id}", dependencies=[Depends(require_debug_access)])
 def debug_score(work_id: str):
     all_works = get_all_works()
     work = get_work_by_id(work_id)
@@ -113,7 +131,7 @@ def debug_score(work_id: str):
 # the aggregated severity tier and shape. This supersedes /debug/score as
 # the richer debug endpoint, but /debug/score is left in place since it's
 # still useful for eyeballing the raw Phase-1 signals on their own.
-@app.get("/debug/risk/{work_id}")
+@app.get("/debug/risk/{work_id}", dependencies=[Depends(require_debug_access)])
 def debug_risk(work_id: str):
     all_works = get_all_works()
     work = get_work_by_id(work_id)
@@ -167,7 +185,7 @@ app.include_router(public.router)
 
 # Phase 4: manual trigger for the escalation scheduler -- a live demo can't
 # wait on a real 2-day window (see escalation/scheduler.py's docstring).
-@app.post("/debug/run-escalation-scheduler")
+@app.post("/debug/run-escalation-scheduler", dependencies=[Depends(require_debug_access)])
 def debug_run_escalation_scheduler(db: Session = Depends(get_db)):
     escalated_ids = run_escalation_tick(db)
     return {"escalated_flag_ids": escalated_ids, "count": len(escalated_ids)}
@@ -176,7 +194,7 @@ def debug_run_escalation_scheduler(db: Session = Depends(get_db)):
 # Phase 12 item 6: manual trigger for the silent-delay auto-flagging
 # scheduler -- same "can't wait on a real window in a live demo" reasoning
 # as the escalation scheduler's own debug endpoint above.
-@app.post("/debug/run-deadline-scheduler")
+@app.post("/debug/run-deadline-scheduler", dependencies=[Depends(require_debug_access)])
 def debug_run_deadline_scheduler(db: Session = Depends(get_db)):
     flagged_work_ids = run_deadline_check_tick(db)
     return {"flagged_work_ids": flagged_work_ids, "count": len(flagged_work_ids)}
@@ -189,7 +207,7 @@ def debug_run_deadline_scheduler(db: Session = Depends(get_db)):
 # works that already have an open flag (it still won't create a SECOND
 # open flag on top of an existing one -- score_and_flag_work only ever
 # checks "is there already an open flag", it doesn't duplicate).
-@app.post("/debug/run-full-scoring")
+@app.post("/debug/run-full-scoring", dependencies=[Depends(require_debug_access)])
 def debug_run_full_scoring(force: bool = False, db: Session = Depends(get_db)):
     df = get_all_works()
     return run_full_scoring(db, df, force=force)

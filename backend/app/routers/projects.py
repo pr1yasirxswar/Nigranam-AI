@@ -32,7 +32,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.data_loader import get_all_works, get_work_by_id
+from app.data_loader import get_all_works, get_work_by_id, invalidate_works_cache
 from app.database import get_db
 from app.auth.identity import get_current_user
 from app.auth.permissions import (
@@ -297,6 +297,7 @@ def create_project(
     )
     db.add(project)
     db.commit()
+    invalidate_works_cache()
     db.refresh(project)
     return _serialize_project(project)
 
@@ -360,8 +361,25 @@ def sanction_project(
     project.sanction_date = datetime.utcnow()
     project.status = "Sanctioned"
     db.commit()
+    invalidate_works_cache()
     db.refresh(project)
     return _serialize_project(project)
+
+
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB per file
+
+
+async def _read_capped(upload: UploadFile) -> bytes:
+    """Bug fix: uploads were read fully into memory with no size limit, so a
+    single large request could exhaust a 512 MB Render instance. Reads one
+    byte past the cap to detect oversize without buffering the whole thing."""
+    data = await upload.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            f"'{upload.filename}' exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MB per-file limit.",
+        )
+    return data
 
 
 def _save_upload(work_id: str, stage_label: str, kind: str, filename: str, data: bytes) -> str:
@@ -427,7 +445,7 @@ async def submit_stage(
     ]
     photo_payloads = []  # (filename, bytes, metadata) for photos that passed
     for upload in photos:
-        data = await upload.read()
+        data = await _read_capped(upload)
         if not data:
             continue
         metadata = extract_photo_metadata(data)
@@ -446,7 +464,7 @@ async def submit_stage(
 
     document_payloads = []
     for upload in documents:
-        data = await upload.read()
+        data = await _read_capped(upload)
         if data:
             document_payloads.append((upload.filename, data))
 
@@ -493,6 +511,7 @@ async def submit_stage(
         project.latest_photo_phash = last_photo_metadata["phash"]
 
     db.commit()
+    invalidate_works_cache()
     db.refresh(stage)
     db.refresh(project)
 
@@ -518,6 +537,7 @@ async def submit_stage(
     stage.ai_tier = result.get("tier")
     stage.ai_driving_signal = analysis.driving_signal if analysis else None
     db.commit()
+    invalidate_works_cache()
 
     return {
         "stage": _serialize_stage(stage, db),

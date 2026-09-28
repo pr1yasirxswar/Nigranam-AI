@@ -24,7 +24,7 @@ are Phase 11 scope (auth/agency_auth.py, seed_users.py expansion); this
 router only adds the login/session mechanics needed to make the existing
 one-account-per-role seed set actually gate access.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Header
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -34,6 +34,8 @@ from app.auth.identity import get_current_user
 from app.auth.security import verify_password
 from app.auth.sessions import create_session, delete_session
 from app.auth.seed_users import DEMO_USERS
+from app.guards import (check_login_allowed, record_login_failure,
+                        clear_login_failures, require_not_production)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -44,16 +46,19 @@ class LoginRequest(BaseModel):
 
 
 @router.post("/login")
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    check_login_allowed(request, payload.x_user_id)
     user = db.query(User).filter(User.x_user_id == payload.x_user_id).first()
     # Same generic error whether the account doesn't exist or the password
     # is wrong -- don't let /auth/login be used to enumerate valid
     # x_user_id values.
     if user is None or not verify_password(payload.password, user.password_hash):
+        record_login_failure(request, payload.x_user_id)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect account or password.",
         )
+    clear_login_failures(request, payload.x_user_id)
     session = create_session(db, user)
     return {
         "token": session.token,
@@ -88,7 +93,7 @@ def whoami(user=Depends(get_current_user)):
     }
 
 
-@router.get("/demo-accounts")
+@router.get("/demo-accounts", dependencies=[Depends(require_not_production)])
 def list_demo_accounts():
     """
     Convenience list of x_user_id/name/role, originally for a frontend

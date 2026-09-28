@@ -128,7 +128,7 @@ def score_and_flag_work(db: Session, work_id: str, work: dict, all_works, force:
     return {"work_id": work_id, "created": True, "status": flag.status, "tier": flag.tier}
 
 
-def run_full_scoring(db: Session, all_works, force: bool = False) -> dict:
+def run_full_scoring(db: Session, all_works, force: bool = False, skip_analyzed: bool = False) -> dict:
     """
     The missing piece: scores EVERY work in the dataset and raises Flags
     for every Medium+ one, in one pass. This is what a real deployment's
@@ -148,8 +148,19 @@ def run_full_scoring(db: Session, all_works, force: bool = False) -> dict:
     scored = 0
     skipped_existing = 0
 
+    # skip_analyzed (startup pass): on a free Render instance the process
+    # restarts after every idle spin-down, and without this every boot
+    # re-scored all ~19.5k works that have no open flag (an AnalysisResult
+    # row already records they were scored). force=True still re-scores all.
+    already_analyzed: set = set()
+    if skip_analyzed and not force:
+        already_analyzed = {r[0] for r in db.query(AnalysisResult.work_id).all()}
+
     for work in all_works.to_dict(orient="records"):
         work_id = work["work_id"]
+        if work_id in already_analyzed:
+            skipped_existing += 1
+            continue
         result = score_and_flag_work(db, work_id, work, all_works, force=force)
 
         if result.get("detail") == "an open flag already exists for this work":

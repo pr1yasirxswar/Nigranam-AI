@@ -72,6 +72,28 @@ def _load_db_projects_df() -> pd.DataFrame:
         db.close()
 
 
+_combined_df = None
+_combined_at = 0.0
+_COMBINED_TTL_SECONDS = 60
+
+
+def _clear_id_keyed_caches():
+    """Every scoring module caches by id(all_works). get_all_works() used to
+    return a brand-new DataFrame on every call once any DB Project existed,
+    so those caches never hit (graph/stat rebuilds on every scored work) AND
+    grew without bound (memory leak, plus stale-hit risk when Python reuses
+    an id). Called whenever a new combined frame replaces the old one."""
+    try:
+        from app.modules import delay, agency_network
+        from app.scoring import isolation_forest
+        for c in (delay._delay_stats_cache, delay._reference_date_cache,
+                  agency_network._graph_cache, agency_network._unit_reason_cache,
+                  isolation_forest._model_cache, isolation_forest._feature_cache):
+            c.clear()
+    except Exception:
+        pass
+
+
 def get_all_works() -> pd.DataFrame:
     """
     Phase 12 item 1 -- every router/module that used to call load_works()
@@ -83,11 +105,25 @@ def get_all_works() -> pd.DataFrame:
     existing dashboard/endpoint with zero changes to those endpoints'
     own code.
     """
+    global _combined_df, _combined_at
+    import time
     csv_df = load_works()
+    now = time.monotonic()
+    if _combined_df is not None and (now - _combined_at) < _COMBINED_TTL_SECONDS:
+        return _combined_df
     db_df = _load_db_projects_df()
-    if db_df.empty:
-        return csv_df
-    return pd.concat([csv_df, db_df], ignore_index=True, sort=False)
+    result = csv_df if db_df.empty else pd.concat([csv_df, db_df], ignore_index=True, sort=False)
+    if _combined_df is not None and result is not _combined_df:
+        _clear_id_keyed_caches()
+    _combined_df, _combined_at = result, now
+    return result
+
+
+def invalidate_works_cache():
+    """Drop the TTL cache so the next get_all_works() re-reads DB projects
+    (call after creating/updating a Project if immediate visibility matters)."""
+    global _combined_at
+    _combined_at = 0.0
 
 
 def get_work_by_id(work_id: str):
