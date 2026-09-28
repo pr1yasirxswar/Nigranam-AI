@@ -13,8 +13,8 @@ def _build_engine_url_and_args(raw_url: str):
       host unless the URL already specifies an sslmode.
     """
     url = make_url(raw_url.strip())
-    if url.drivername == "postgres":
-        url = url.set(drivername="postgresql")
+        if url.drivername.split("+")[0] in ("postgres", "postgresql"):
+        url = url.set(drivername="postgresql+psycopg2")
     connect_args = {}
     is_local = (url.host or "") in ("localhost", "127.0.0.1", "db", "")
     if not is_local and "sslmode" not in (url.query or {}):
