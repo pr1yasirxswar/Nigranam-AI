@@ -1,0 +1,37 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+pydantic
+pydantic-settings
+pandas
+python-dotenv
+scikit-learn
+# sentence-transformers intentionally NOT installed in production: it pulls in
+# PyTorch (~2 GB, and 500+ MB RAM at import) which does not fit Render's free
+# 512 MB instance. It is only used to REBUILD the duplicate index when the CSV
+# changes; the prebuilt index in data/duplicate_index/ is loaded from disk, and
+# duplicate.py already falls back to TF-IDF if it is missing. Re-add it locally
+# only if you regenerate the CSV.
+networkx
+joblib
+requests
+# Required by app/modules/duplicate.py (faiss.IndexFlatIP / IndexIVFFlat) --
+# was missing entirely, which crashed the startup scoring pass with
+# ModuleNotFoundError on any environment that didn't already have it
+# installed globally (e.g. a fresh Render build).
+faiss-cpu
+# Required by FastAPI to parse multipart/form-data (Form()/UploadFile) --
+# needed by the new POST /projects/{id}/stages endpoint (Phase 12 item 3).
+# Not a "new dependency" in the Rules.md sense (no new service/capability
+# added, just the parser FastAPI itself documents as required for file
+# uploads), so this one doesn't need the same go-ahead as Pillow below.
+python-multipart
+# Phase 12 item 5 -- EXIF GPS/timestamp extraction + perceptual hashing for
+# live Implementing Agency photo uploads (modules/live_photo_check.py).
+# This is the ONE new dependency this phase adds (flagged in
+# Implementation-Guide.md item 5 as needing your go-ahead) -- the
+# perceptual hash itself is implemented with Pillow alone (a simple
+# average-hash), so a separate hashing library was deliberately skipped
+# to keep this to one new dependency instead of two.
+Pillow

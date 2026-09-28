@@ -1,0 +1,36 @@
+# Backend only. The database lives on Supabase (not Render), so there is no
+# `databases:` block -- DATABASE_URL is entered by hand in the dashboard.
+services:
+  - type: web
+    name: sentinel-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.6
+      - key: APP_ENV
+        value: production
+      # Supabase SESSION POOLER string (see DEPLOY.md). Paste in dashboard.
+      - key: DATABASE_URL
+        sync: false
+      # Your Vercel production URL, no trailing slash needed.
+      - key: CORS_ORIGINS
+        sync: false
+      # Optional: allow Vercel preview deployments.
+      - key: CORS_ORIGIN_REGEX
+        sync: false
+      # Optional: enables /debug/* endpoints when sent as X-Debug-Token.
+      - key: DEBUG_TOKEN
+        generateValue: true
+      # NOTE: changing this after first boot invalidates every seeded
+      # password hash (seed_users skips existing users). Set once.
+      - key: SENTINEL_PASSWORD_PEPPER
+        generateValue: true
+      - key: CSV_PATH
+        value: ./data/mplads_synthetic_v5.csv
+      - key: UPLOAD_DIR
+        value: ./data/uploads

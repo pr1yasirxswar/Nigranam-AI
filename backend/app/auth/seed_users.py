@@ -24,18 +24,21 @@ specified" -- these are pulled from the real data, not invented):
   - local4 -- Guntur, Andhra Pradesh; loc "Gram Panchayat 6" is a clean
     contrast pair (both its works are anomaly-free) -- deliberately no
     flagged work here, per Demo-Credentials.md.
-  - district4 -- Zahirabad, Telangana (9 works) -- a fourth state, for
+  - district4 -- Bhongir, Telangana (216 works) -- a fourth state, for
     variety, with no local-authority account nested under it (Local
     Authority only has 4 slots and district1-3 already cover Kottayam/
-    Mirzapur/Diamond Harbour).
+    Mirzapur/Diamond Harbour). Replaces "Zahirabad", which has no rows in
+    the v5 dataset.
   - state1-4 -- Uttar Pradesh (886 works, largest in the dataset),
     Maharashtra (520), West Bengal (458), Bihar (439).
   - mp1-4 -- constituency values are UPPERCASE in the dataset
-    (`df["constituency"]`): MALDAHA UTTAR (West Bengal), BHANDARA-GONDIYA
-    (Maharashtra), SIVAGANGA (Tamil Nadu), ROBERTSGANJ(SC) (Uttar
-    Pradesh) -- the dataset's own constituency name already carries the
-    "(SC)" suffix, kept verbatim rather than dropped, since
-    filter_works_for_user()'s equality check needs an exact match.
+    (`df["constituency"]`): DIAMOND HARBOUR (West Bengal, 231 works),
+    BHANDARA-GONDIYA (Maharashtra, 220), MIRZAPUR (Uttar Pradesh, 212),
+    KOTTAYAM (Kerala, 204). The earlier MALDAHA UTTAR / SIVAGANGA /
+    ROBERTSGANJ(SC) values do not exist in the dataset (0 works), so those
+    three accounts were re-pointed. These three also line up with the
+    district/local accounts (Diamond Harbour, Mirzapur, Kottayam), so one
+    story can be followed from Local -> District -> MP.
   - agency1-4 -- Work IDs, executing_agency + implementing_district
     verified against the real work_id each maps to (see table below);
     these are Phase 11 item 3's issued credentials, not internal-scheme
@@ -123,10 +126,10 @@ DEMO_USERS = [
     ),
     dict(
         x_user_id="district4",
-        password="District@Zahirabad1",
-        name="District Authority -- Zahirabad",
+        password="District@Bhongir1",
+        name="District Authority -- Bhongir",
         role=ROLE_DISTRICT_AUTHORITY,
-        district="Zahirabad",
+        district="Bhongir",
     ),
 
     # -- Nodal State Authority (4) ----------------------------------------
@@ -162,10 +165,10 @@ DEMO_USERS = [
     # -- Member of Parliament (4) -----------------------------------------
     dict(
         x_user_id="mp1",
-        password="MP@MaldahaUttar1",
-        name="MP -- Maldaha Uttar Constituency",
+        password="MP@DiamondHarbour1",
+        name="MP -- Diamond Harbour Constituency",
         role=ROLE_MP,
-        constituency="MALDAHA UTTAR",
+        constituency="DIAMOND HARBOUR",
     ),
     dict(
         x_user_id="mp2",
@@ -176,17 +179,17 @@ DEMO_USERS = [
     ),
     dict(
         x_user_id="mp3",
-        password="MP@Sivaganga1",
-        name="MP -- Sivaganga Constituency",
+        password="MP@Mirzapur1",
+        name="MP -- Mirzapur Constituency",
         role=ROLE_MP,
-        constituency="SIVAGANGA",
+        constituency="MIRZAPUR",
     ),
     dict(
         x_user_id="mp4",
-        password="MP@Robertsganj1",
-        name="MP -- Robertsganj (SC) Constituency",
+        password="MP@Kottayam1",
+        name="MP -- Kottayam Constituency",
         role=ROLE_MP,
-        constituency="ROBERTSGANJ(SC)",
+        constituency="KOTTAYAM",
     ),
 
     # -- Implementing Agency (4) -- Phase 11 item 3's issued-credential
@@ -210,12 +213,12 @@ DEMO_USERS = [
         district="Mirzapur",
     ),
     dict(
-        x_user_id="WORK-UTT-003263",
-        password="Agency@Deoria1",
-        name="Panchayati Raj Department (Deoria)",
+        x_user_id="WORK-UTT-002699",
+        password="Agency@Unnao1",
+        name="Panchayati Raj Department (Unnao)",
         role=ROLE_IMPLEMENTING_AGENCY,
         executing_agency="Panchayati Raj Department",
-        district="Deoria",
+        district="Unnao",
     ),
     dict(
         x_user_id="WORK-MAH-001034",
@@ -228,10 +231,26 @@ DEMO_USERS = [
 ]
 
 
+# Demo accounts that pointed at jurisdictions with no rows in the dataset.
+# Removed on boot so they don't linger next to their replacements.
+RETIRED_DEMO_IDS = ["WORK-UTT-003263"]
+
+
 def seed_users():
     Base.metadata.create_all(bind=engine)  # safe no-op if tables already exist
     db = SessionLocal()
     try:
+        for retired in RETIRED_DEMO_IDS:
+            # Best effort: if the old account already has sessions/actions
+            # attached (foreign keys), leave it in place rather than crash
+            # startup -- it is harmless, just an unused login.
+            try:
+                stale = db.query(User).filter(User.x_user_id == retired).first()
+                if stale is not None:
+                    db.delete(stale)
+                    db.commit()
+            except Exception:
+                db.rollback()
         existing = {u.x_user_id: u for u in db.query(User).all()}
         added = 0
         repaired = 0
@@ -249,6 +268,16 @@ def seed_users():
                 if not verify_password(plain_password, current.password_hash):
                     current.password_hash = hash_password(plain_password)
                     repaired += 1
+                # Keep the jurisdiction/name of an existing demo account in
+                # sync with this file. Without this, changing an account's
+                # constituency here would never reach a database that was
+                # already seeded (e.g. Supabase), and it would keep pointing
+                # at the old, empty jurisdiction.
+                for field, value in entry.items():
+                    if field in ("x_user_id", "password"):
+                        continue
+                    if getattr(current, field, None) != value:
+                        setattr(current, field, value)
                 continue
             row = {k: v for k, v in entry.items() if k != "password"}
             row["password_hash"] = hash_password(plain_password)
