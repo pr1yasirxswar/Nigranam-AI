@@ -82,6 +82,35 @@ header p { margin: 0.2rem 0 0; color: var(--color-text-muted); font-size: 0.85re
   font-weight: 700;
   color: var(--color-primary);
 }
+/* Project name -- the top, largest line of the masthead. "MPLADS" (scheme
+   short name) sits directly under it, then the full scheme name. */
+.brand-main {
+  display: block;
+  font-size: clamp(2.4rem, 7vw, 3.8rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: 0.03em;
+  color: var(--color-primary);
+}
+
+/* Show/hide password toggle on the login form */
+.password-field { position: relative; }
+.password-field input { width: 100%; box-sizing: border-box; padding-right: 4.5rem; }
+.password-toggle {
+  position: absolute;
+  right: 0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.3rem 0.5rem;
+}
+.password-toggle:hover { text-decoration: underline; }
+
 /* Masthead title -- "MPLADS" now takes this large/bold/blue treatment
    (previously used for "NIGRANAM-AI"). */
 .brand-product-name {

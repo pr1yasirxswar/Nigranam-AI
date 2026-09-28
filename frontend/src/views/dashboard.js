@@ -187,8 +187,6 @@ export async function renderDashboardView(container) {
 
   function render() {
     container.innerHTML = `
-      ${isLoggedIn ? "" : _renderAboutSection()}
-
       <p class="subtle">${
         isLoggedIn
           ? "Home summary -- the same public figures; jurisdiction-scoped versions land with each role's own dashboard build."
@@ -205,6 +203,8 @@ export async function renderDashboardView(container) {
           </div>`
         ).join("")}
       </div>
+
+      ${isLoggedIn ? "" : _renderAboutSection()}
     `;
   }
 

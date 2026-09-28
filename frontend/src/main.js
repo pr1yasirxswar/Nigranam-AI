@@ -206,7 +206,10 @@ function renderModal() {
       <label class="switcher-label" for="login-account">${idLabel}</label>
       <input id="login-account" type="text" placeholder="${idLabel}" autocomplete="username" />
       <label class="switcher-label" for="login-password">Password</label>
-      <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" />
+      <div class="password-field">
+        <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" />
+        <button type="button" id="password-toggle" class="password-toggle" aria-label="Show password">Show</button>
+      </div>
       <button id="login-submit" class="primary-button">Log in</button>
       ${loginError ? `<p class="error">${loginError}</p>` : ""}
       <p class="switcher-note">Hackathon-stage auth (Rules.md), but a real login check gates every dashboard
@@ -233,6 +236,15 @@ function renderModal() {
     wireVerifySection(modalRootEl, renderModal);
   } else {
     document.getElementById("login-submit").addEventListener("click", onLoginSubmit);
+    const pwInput = document.getElementById("login-password");
+    const pwToggle = document.getElementById("password-toggle");
+    pwToggle.addEventListener("click", () => {
+      const show = pwInput.type === "password";
+      pwInput.type = show ? "text" : "password";
+      pwToggle.textContent = show ? "Hide" : "Show";
+      pwToggle.setAttribute("aria-label", show ? "Hide password" : "Show password");
+      pwInput.focus();
+    });
     document.getElementById("login-password").addEventListener("keydown", (e) => {
       if (e.key === "Enter") onLoginSubmit();
     });
@@ -280,13 +292,15 @@ async function checkBackend() {
     // unreachable backend is still surfaced below), but on success this
     // slot now shows the product mark instead of a raw "Backend
     // connected" string.
-    statusEl.textContent = "NIGRANAM-AI";
-    statusEl.classList.add("product-mark");
-    statusEl.style.color = "";
+    // The project name is now the masthead's top line (index.html), so the
+    // small status chip is simply hidden once the backend is reachable.
+    statusEl.textContent = "";
+    statusEl.style.display = "none";
     renderSwitcher();
     await showDashboard();
   } catch (err) {
     statusEl.classList.remove("product-mark");
+    statusEl.style.display = "";
     statusEl.textContent = "Backend not reachable";
     statusEl.style.color = "red";
   }
