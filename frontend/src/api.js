@@ -11,7 +11,36 @@
 // (auth/identity.py) is the only real gate; this is just the client-side
 // bookkeeping for the token plus a clean 401 -> "log in again" path.
 
-export const API_BASE = "http://localhost:8000";
+// Bug fix: this used to be hardcoded to http://localhost:8000, which means
+// after a Netlify build the deployed site would try to call "localhost"
+// inside the VISITOR's own browser -- i.e. every request would fail with
+// nothing but "Backend not reachable". Vite exposes any VITE_-prefixed env
+// var at build time via import.meta.env; set VITE_API_BASE in Netlify's
+// site settings to your Render backend URL (e.g. https://your-api.onrender.com)
+// and it gets baked in at build time. Falls back to localhost so `npm run
+// dev` still works unconfigured.
+export const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+
+// Security fix (stored XSS): every view builds HTML with template strings +
+// innerHTML and NONE of them escape, while several fields are free text typed
+// by other users (stage labels, review comments, project descriptions).
+// Defense-in-depth interim fix: neutralise `<`, `>` and `"` in every string
+// of every API response before any view sees it, which blocks tag injection
+// in both text and double-quoted-attribute contexts. (`&` and `'` are left
+// alone so names like "Jammu & Kashmir" still round-trip to the API.) The
+// proper long-term fix is escaping at each render site.
+function sanitizeDeep(v) {
+  if (typeof v === "string") {
+    return v.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  if (Array.isArray(v)) return v.map(sanitizeDeep);
+  if (v && typeof v === "object") {
+    const out = {};
+    for (const k of Object.keys(v)) out[k] = sanitizeDeep(v[k]);
+    return out;
+  }
+  return v;
+}
 
 const TOKEN_KEY = "sentinel_session_token";
 const USER_KEY = "sentinel_session_user"; // { x_user_id, name, role }
@@ -55,11 +84,12 @@ export async function login(xUserId, password) {
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    const detail = (body && body.detail) || "Login failed.";
+    const detail = sanitizeDeep((body && typeof body.detail === "string" && body.detail) || "Login failed.");
     throw new Error(detail);
   }
-  setSession(body.token, body.user);
-  return body.user;
+  const safeUser = sanitizeDeep(body.user);
+  setSession(body.token, safeUser);
+  return safeUser;
 }
 
 export async function logout() {
@@ -92,12 +122,12 @@ async function _publicFetch(path, options = {}) {
     // no/invalid JSON body
   }
   if (!res.ok) {
-    const detail = (body && body.detail) || res.statusText || "Request failed";
+    const detail = sanitizeDeep((body && typeof body.detail === "string" && body.detail) || res.statusText || "Request failed");
     const err = new Error(detail);
     err.status = res.status;
     throw err;
   }
-  return body;
+  return sanitizeDeep(body);
 }
 
 // { state: [district, ...], ... }, straight from the works data -- used to
@@ -130,10 +160,10 @@ export async function apiFetch(path, options = {}) {
     clearSession();
   }
   if (!res.ok) {
-    const detail = (body && body.detail) || res.statusText || "Request failed";
+    const detail = sanitizeDeep((body && typeof body.detail === "string" && body.detail) || res.statusText || "Request failed");
     const err = new Error(detail);
     err.status = res.status;
     throw err;
   }
-  return body;
+  return sanitizeDeep(body);
 }
