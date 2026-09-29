@@ -398,3 +398,28 @@ class ProjectDocument(Base):
 
     def __repr__(self):
         return f"<ProjectDocument project_id={self.project_id!r} file_path={self.file_path!r}>"
+
+
+class ProjectMessage(Base):
+    """
+    Unstructured-communication layer for one work: the chat thread between
+    an Implementing Agency and the authorities covering it, and the formal
+    notices an authority sends the agency (kind="notice", acknowledged by
+    the agency). Append-only like Review -- acknowledging a notice only
+    stamps acknowledged_at/by, it never edits or deletes the text.
+    """
+    __tablename__ = "project_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    work_id = Column(String, nullable=False, index=True)
+    kind = Column(String, nullable=False, index=True)  # "chat" | "notice"
+    sender_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    sender_name = Column(String, nullable=True)
+    sender_role = Column(String, nullable=False)
+    body = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    acknowledged_at = Column(DateTime, nullable=True)
+    acknowledged_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    def __repr__(self):
+        return f"<ProjectMessage work_id={self.work_id!r} kind={self.kind!r}>"

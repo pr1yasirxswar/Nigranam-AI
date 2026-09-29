@@ -16,7 +16,7 @@ from app.scoring.isolation_forest import score_work_isolation_forest
 from app.scoring.risk_aggregator import aggregate_risk
 from app.database import Base, engine, SessionLocal, get_db
 from app.auth.seed_users import seed_users
-from app.routers import projects, auth, flags, reviews, agencies, stats, collusion, mp_compare, public
+from app.routers import projects, auth, flags, reviews, messages, agencies, stats, collusion, mp_compare, public
 from app.escalation.scheduler import escalation_background_loop, run_escalation_tick
 from app.escalation.deadline_scheduler import deadline_background_loop, run_deadline_check_tick
 from app.scoring.pipeline import run_full_scoring
@@ -164,6 +164,7 @@ def debug_risk(work_id: str):
 # swallow "/projects/<id>/reviews" whole before reviews.router ever saw
 # it. FastAPI/Starlette matches routes in registration order.
 app.include_router(reviews.router)
+app.include_router(messages.router)  # before projects.router -- greedy {work_id:path}
 app.include_router(projects.router)
 app.include_router(auth.router)
 
