@@ -51,18 +51,6 @@ async function renderHome(panel, me, rows) {
   `;
 }
 
-function _uploadWorkspace(workId) {
-  return `
-    <div class="upload-box">
-      <p class="subtle"><strong>Upload workspace</strong> -- not yet wired to a backend (Phase 11+ scope, not
-      specified in PRD.md: storage, file types, and size limits still need a team decision). Shown here as a
-      real but disabled UI shell rather than faked.</p>
-      <input type="file" disabled multiple />
-      <button class="primary-button" disabled>Upload evidence for ${workId}</button>
-    </div>
-  `;
-}
-
 async function renderMyProjects(panel, rows, me) {
   const byDistrict = {};
   for (const r of rows) {
@@ -94,7 +82,6 @@ async function renderMyProjects(panel, rows, me) {
     li.addEventListener("click", async () => {
       const detailEl = panel.querySelector("#agency-work-detail");
       await openWorkDetail(detailEl, li.dataset.workId, me, () => renderMyProjects(panel, rows, me));
-      detailEl.insertAdjacentHTML("beforeend", _uploadWorkspace(li.dataset.workId));
     });
   });
 }

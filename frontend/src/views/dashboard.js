@@ -67,7 +67,7 @@ function _renderAreaSection() {
   return `
     <h3>Check your area's projects</h3>
     <p class="subtle">Pick your state and district to see the projects recommended for that area
-    (status, implementing authority, % complete -- no risk data, PRD.md S4.10).</p>
+    (status, implementing authority, % complete).</p>
     <div class="verify-box">
       <select id="area-state">
         <option value="">Select State</option>
@@ -189,8 +189,8 @@ export async function renderDashboardView(container) {
     container.innerHTML = `
       <p class="subtle">${
         isLoggedIn
-          ? "Home summary -- the same public figures; jurisdiction-scoped versions land with each role's own dashboard build."
-          : "Public transparency summary -- no login required (PRD.md S5.1)."
+          ? "Home summary."
+          : "Public transparency summary -- no login required."
       }</p>
 
       <div class="stat-cards">

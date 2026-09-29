@@ -20,8 +20,7 @@ export async function renderCollusionView(container) {
   if (!user || user.role !== "nodal_state_authority") {
     container.innerHTML = `
       <h2>Collusion Alerts</h2>
-      <p class="subtle">This view is available to the Nodal State Authority only (PRD.md S4.9,
-      Implementation-Guide.md Phase 9 item 3).</p>`;
+      <p class="subtle">This view is available to the Nodal State Authority only.</p>`;
     return;
   }
 
@@ -40,8 +39,7 @@ export async function renderCollusionView(container) {
       <h2>Collusion Alerts</h2>
       <p class="subtle">A repeat-offender pattern here means one specific authority account has cleared the
       same recurring anomaly on the same agency category several times in a row without it resolving -- not
-      a claim that any two named companies are colluding (the dataset only has 7 generic agency-type
-      categories, PRD.md S4.2).</p>
+      a claim that any two named companies are colluding.</p>
       <p><em>No collusion alerts in your state yet.</em></p>`;
     return;
   }
@@ -50,8 +48,7 @@ export async function renderCollusionView(container) {
     <h2>Collusion Alerts -- ${user.name}</h2>
     <p class="subtle">A repeat-offender pattern here means one specific authority account has cleared the
     same recurring anomaly on the same agency category several times in a row without it resolving -- not
-    a claim that any two named companies are colluding (the dataset only has 7 generic agency-type
-    categories, PRD.md S4.2).</p>
+    a claim that any two named companies are colluding.</p>
 
     <div class="network-nodes">
       ${alerts

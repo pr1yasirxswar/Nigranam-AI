@@ -35,12 +35,14 @@ import { renderLocalDashboard } from "./views/local_dashboard.js";
 import { renderDistrictDashboard } from "./views/district_dashboard.js";
 import { renderStateDashboard } from "./views/state_dashboard.js";
 import { renderMpDashboard } from "./views/mp_dashboard.js";
+import { openWorkDetail } from "./views/shared/dashboard_kit.js";
 
 const statusEl = document.getElementById("status");
 const navEl = document.getElementById("view-nav");
 const rootEl = document.getElementById("view-root");
 const switcherEl = document.getElementById("dashboard-switcher");
 const modalRootEl = document.getElementById("modal-root");
+const alertsBannerEl = document.getElementById("alerts-banner");
 
 // Phase 10 -- one full dashboard per role (PRD.md S5.2-S5.6). null = no
 // login (public dashboard, S5.1, unchanged from Phase 8).
@@ -74,12 +76,94 @@ let modalOption = null; // null -> "authority" | "agency" | "verify"
 
 navEl.style.display = "none"; // Phase 10 -- no flat nav; see header comment.
 
+// Alerts banner -- shown above every dashboard for a logged-in user, not
+// buried inside a single project's page. Two sources, both jurisdiction-
+// scoped server-side: GET /flags/mine (unresolved flags this role must act
+// on) and GET /notices/pending (formal notices the agency hasn't
+// acknowledged yet). Clicking an entry opens that work's own detail page
+// straight to its Alerts tab.
+let alertsExpanded = false;
+
+async function refreshAlertsBanner() {
+  const user = getCurrentUser();
+  if (!user) {
+    alertsBannerEl.innerHTML = "";
+    return;
+  }
+  let flags = [];
+  let notices = [];
+  try {
+    [flags, notices] = await Promise.all([
+      apiFetch("/flags/mine"),
+      apiFetch("/notices/pending"),
+    ]);
+  } catch {
+    alertsBannerEl.innerHTML = "";
+    return; // not fatal -- dashboard content still loads normally
+  }
+
+  const total = flags.length + notices.length;
+  if (total === 0) {
+    alertsBannerEl.innerHTML = "";
+    return;
+  }
+
+  const items = [
+    ...flags.map((f) => ({
+      workId: f.work_id,
+      tier: f.tier,
+      text: `${f.work_id} -- ${f.tier ?? "flagged"}${f.driving_signal ? `: ${f.driving_signal}` : ""}`,
+    })),
+    ...notices.map((n) => ({
+      workId: n.work_id,
+      tier: null,
+      text: `${n.work_id} -- notice from ${n.sender_name ?? n.sender_role} awaiting your reply`,
+    })),
+  ];
+
+  alertsBannerEl.innerHTML = `
+    <div class="alerts-banner ${alertsExpanded ? "expanded" : ""}">
+      <button class="alerts-banner-toggle" id="alerts-toggle">
+        <span class="alerts-banner-count">${total}</span> alert${total === 1 ? "" : "s"} need${total === 1 ? "s" : ""} your attention
+        <span class="alerts-banner-caret">${alertsExpanded ? "&#9650;" : "&#9660;"}</span>
+      </button>
+      ${
+        alertsExpanded
+          ? `<ul class="alerts-banner-list">
+              ${items
+                .map(
+                  (it) => `<li class="alerts-banner-item" data-work-id="${it.workId}">
+                    ${it.tier ? `<span class="tier-pill tier-${it.tier.toLowerCase()}">${it.tier}</span>` : `<span class="tier-pill tier-pending">Notice</span>`}
+                    ${it.text}
+                  </li>`
+                )
+                .join("")}
+            </ul>`
+          : ""
+      }
+    </div>
+  `;
+
+  alertsBannerEl.querySelector("#alerts-toggle").addEventListener("click", () => {
+    alertsExpanded = !alertsExpanded;
+    refreshAlertsBanner();
+  });
+  alertsBannerEl.querySelectorAll(".alerts-banner-item").forEach((li) => {
+    li.addEventListener("click", async () => {
+      const me = await apiFetch("/auth/me");
+      await openWorkDetail(null, li.dataset.workId, me, () => refreshAlertsBanner());
+    });
+  });
+}
+
 async function showDashboard() {
   const user = getCurrentUser();
   if (!user) {
+    alertsBannerEl.innerHTML = "";
     await renderDashboardView(rootEl);
     return;
   }
+  refreshAlertsBanner();
   const renderFn = DASHBOARD_FOR_ROLE[user.role];
   if (!renderFn) {
     // Unknown role -- fall back to the plain public-style summary rather
@@ -212,8 +296,6 @@ function renderModal() {
       </div>
       <button id="login-submit" class="primary-button">Log in</button>
       ${loginError ? `<p class="error">${loginError}</p>` : ""}
-      <p class="switcher-note">Hackathon-stage auth (Rules.md), but a real login check gates every dashboard
-      (Implementation-Guide.md Phase 8 item 6).</p>
     `;
   }
 

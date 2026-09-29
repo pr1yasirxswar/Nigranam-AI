@@ -18,7 +18,7 @@ export async function renderNetworkView(container) {
     container.innerHTML = `
       <h2>Network View</h2>
       <p class="subtle">Pick a role in the switcher above to view agency risk clustering. Implementing Agency
-      accounts don't have access to this view (Implementation-Guide.md Phase 5).</p>`;
+      accounts don't have access to this view.</p>`;
     return;
   }
 
@@ -63,7 +63,7 @@ export async function renderNetworkView(container) {
   container.innerHTML = `
     <h2>Network View -- ${data.state}</h2>
     <p class="subtle">Agency-district units genuinely tied to a repeated fraud/anomaly pattern, each shown with the
-    plain-language reason behind its flag (PRD.md S4.2/S7 item 3). This surfaces <strong>regional risk
+    plain-language reason behind its flag. This surfaces <strong>regional risk
     concentration</strong>, not a collusion claim -- the dataset only has generic agency-type categories, not
     distinct company identities.</p>
 

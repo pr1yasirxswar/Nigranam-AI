@@ -167,3 +167,36 @@ export async function apiFetch(path, options = {}) {
   }
   return sanitizeDeep(body);
 }
+
+// Fetches a protected file (uploaded photo/document) with the session token
+// and returns an object URL usable in <img src> / window.open.
+export async function apiFetchBlob(path) {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!res.ok) throw new Error("File unavailable");
+  return URL.createObjectURL(await res.blob());
+}
+
+// multipart/form-data POST (browser sets the boundary, so no Content-Type).
+export async function apiUpload(path, formData) {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  let body = null;
+  try {
+    body = await res.json();
+  } catch {
+    // no JSON body
+  }
+  if (res.status === 401) clearSession();
+  if (!res.ok) {
+    const detail = sanitizeDeep((body && typeof body.detail === "string" && body.detail) || "Upload failed. Check the fields and try again.");
+    const err = new Error(detail);
+    err.status = res.status;
+    throw err;
+  }
+  return sanitizeDeep(body);
+}

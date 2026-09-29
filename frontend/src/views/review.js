@@ -333,7 +333,7 @@ export async function renderReviewView(container, skipReload) {
 
   container.innerHTML = `
     <h2>Review Panel -- ${me.name} (${me.role})</h2>
-    <p class="subtle">Jurisdiction: ${jurisdiction || "none"}. Showing ${myProjects.length} works in scope,
+    <p class="subtle">Jurisdiction: ${jurisdiction || "none"}. Showing ${myProjects.length} works,
     ${myFlags.length} awaiting your tier's action.</p>
 
     <h3>Flags awaiting your action</h3>

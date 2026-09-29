@@ -10,7 +10,7 @@
 // patterns.
 
 import { apiFetch } from "../../api.js";
-import { renderWorkDetail } from "../review.js";
+import { renderProjectDetail } from "../project_detail.js";
 import { renderBarChart, renderPieChart } from "./charts.js";
 
 export function formatCrore(amount) {
@@ -292,7 +292,7 @@ export async function openWorkDetail(panelEl, workId, me, onBack) {
     onBack?.();
   };
 
-  await renderWorkDetail(pageRoot.querySelector("#project-page-inner"), workId, me, {
+  await renderProjectDetail(pageRoot.querySelector("#project-page-inner"), workId, me, {
     onBack: closeProjectPage,
   });
 }

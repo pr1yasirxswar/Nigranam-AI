@@ -118,8 +118,8 @@ function renderDistrictDrilldown(panel, rows, me) {
   const districts = Object.values(byDistrict).sort((a, b) => b.flagged - a.flagged);
 
   panel.innerHTML = `
-    <p class="subtle">Districts making up ${me.jurisdiction.constituency} -- full detail access within your
-    constituency (PRD.md S3's apex/a-to-z access), scoped to your own constituency only.</p>
+    <p class="subtle">Districts making up ${me.jurisdiction.constituency} -- full detail access, scoped to your
+    own constituency only.</p>
     <ul class="drilldown-list">
       ${districts
         .map(
@@ -213,7 +213,7 @@ async function renderCrossMpComparison(panel) {
 
   panel.innerHTML = `
     <p class="subtle">Every constituency's risk profile, side by side (aggregate counts only -- no individual
-    work IDs, review text, or reviewer identity, GET /mp/compare).</p>
+    work IDs, review text, or reviewer identity).</p>
     <table class="data-table">
       <thead>
         <tr>
