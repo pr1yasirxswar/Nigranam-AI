@@ -36,6 +36,12 @@
   -->
   <div id="dashboard-switcher" class="dashboard-switcher"></div>
 
+  <!-- Persistent alerts banner -- sits above every dashboard's own content
+       (see main.js's renderAlertsBanner()) so an active AI flag or an
+       unacknowledged notice is never something the user has to go looking
+       for on a specific tab. -->
+  <div id="alerts-banner"></div>
+
   <main>
     <div id="status">Checking backend...</div>
 
