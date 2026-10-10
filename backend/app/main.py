@@ -86,8 +86,21 @@ async def on_startup():
     # restart is idempotent -- it won't spam duplicate flags.
     # Runs in a thread (run_in_executor) so the ~5,940-row pass doesn't
     # block the event loop / incoming requests while it scores.
-    loop = asyncio.get_event_loop()
-    loop.run_in_executor(None, _run_full_scoring_sync)
+    #
+    # Bug fix: on a resource-constrained instance (Render free tier --
+    # a fraction of one shared vCPU) this pandas+sklearn pass over ~5,940
+    # rows competes for the same single CPU core as the main event loop.
+    # Under enough CPU pressure the event loop can go long enough without
+    # a turn that it never answers Render's own port/health scan in time,
+    # so the whole deploy gets killed as "Timed Out" -- before the app
+    # ever got a chance to finish starting. Default stays on (any instance
+    # with real CPU handles this fine); set SKIP_STARTUP_SCORING=true in
+    # the environment to boot without it when running somewhere this
+    # constrained. The debug endpoint below (/debug/run-full-scoring) can
+    # still be called by hand once the app is up.
+    if os.environ.get("SKIP_STARTUP_SCORING", "").strip().lower() not in ("1", "true", "yes"):
+        loop = asyncio.get_event_loop()
+        loop.run_in_executor(None, _run_full_scoring_sync)
 
 @app.get("/health")
 def health(db: Session = Depends(get_db)):
